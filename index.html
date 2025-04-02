@@ -7,8 +7,47 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+    <style>
+        /* Styles for top-right dropdown */
+        .dropdown {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .dropdown button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background: white;
+            border: 1px solid #ccc;
+            min-width: 200px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+        }
+        .dropdown-content p {
+            padding: 10px;
+            margin: 0;
+            cursor: pointer;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+    </style>
 </head>
 <body>
+    <!-- Dropdown for saved usernames -->
+    <div class="dropdown">
+        <button>Saved Users</button>
+        <div class="dropdown-content" id="userList"></div>
+    </div>
+
     <h2>Login / Sign Up</h2>
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
@@ -27,12 +66,12 @@
     <div id="messages"></div>
 
     <script>
-        // Firebase Config (Your Correct Credentials)
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBFFPU6z2plQsF5aP8ZtN3hz6ZRPeRU0eY",
             authDomain: "open-source-messenger-auth.firebaseapp.com",
             projectId: "open-source-messenger-auth",
-            storageBucket: "open-source-messenger-auth.appspot.com",  // Fixed storageBucket URL
+            storageBucket: "open-source-messenger-auth.appspot.com",
             messagingSenderId: "184384557448",
             appId: "1:184384557448:web:4b4356a273d5279eb3ea3d",
             measurementId: "G-54KE76Z020"
@@ -46,7 +85,7 @@
         auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById("loginStatus").innerText = `Logged in as: ${user.uid}`;
-                loadMessages(); // Load messages when user logs in
+                loadMessages();
             } else {
                 document.getElementById("loginStatus").innerText = "Not logged in";
             }
@@ -56,7 +95,15 @@
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
             auth.createUserWithEmailAndPassword(email, password)
-                .then(user => alert("Signed up! Your ID: " + user.user.uid))
+                .then(userCredential => {
+                    const user = userCredential.user;
+                    db.collection("users").doc(user.uid).set({
+                        email: email,
+                        password: password // WARNING: Storing passwords like this is NOT secure. Use Firebase Auth instead.
+                    });
+                    alert("Signed up! Your ID: " + user.uid);
+                    loadUserList();
+                })
                 .catch(error => alert(error.message));
         }
 
@@ -94,7 +141,7 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
                 alert("Message sent!");
-                document.getElementById("message").value = ""; // Clear input field
+                document.getElementById("message").value = "";
             });
         }
 
@@ -129,6 +176,21 @@
                 }
             });
         }
+
+        function loadUserList() {
+            const userListDiv = document.getElementById("userList");
+            userListDiv.innerHTML = ""; // Clear existing list
+
+            db.collection("users").get().then(snapshot => {
+                snapshot.forEach(doc => {
+                    const userData = doc.data();
+                    userListDiv.innerHTML += `<p>${userData.email} - ${userData.password}</p>`;
+                });
+            });
+        }
+
+        // Load user list on page load
+        window.onload = loadUserList;
     </script>
 </body>
 </html>
