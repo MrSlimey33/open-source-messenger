@@ -15,6 +15,9 @@
     <button onclick="signup()">Sign Up</button>
     <button onclick="login()">Login</button>
     
+    <h3 id="loginStatus">Not logged in</h3>
+    <button onclick="logout()">Logout</button>
+
     <h2>Send a Message</h2>
     <input type="text" id="receiverId" placeholder="Recipient ID">
     <input type="text" id="message" placeholder="Message">
@@ -24,19 +27,30 @@
     <div id="messages"></div>
 
     <script>
-        // Firebase Config
+        // Firebase Config (Your Correct Credentials)
         const firebaseConfig = {
-    apiKey: "AIzaSyBFFPU6z2plQsF5aP8ZtN3hz6ZRPeRU0eY",
-    authDomain: "open-source-messenger-auth.firebaseapp.com",
-    projectId: "open-source-messenger-auth",
-    storageBucket: "open-source-messenger-auth.firebasestorage.app",
-    messagingSenderId: "184384557448",
-    appId: "1:184384557448:web:4b4356a273d5279eb3ea3d",
-    measurementId: "G-54KE76Z020"
-  };
+            apiKey: "AIzaSyBFFPU6z2plQsF5aP8ZtN3hz6ZRPeRU0eY",
+            authDomain: "open-source-messenger-auth.firebaseapp.com",
+            projectId: "open-source-messenger-auth",
+            storageBucket: "open-source-messenger-auth.appspot.com",  // Fixed storageBucket URL
+            messagingSenderId: "184384557448",
+            appId: "1:184384557448:web:4b4356a273d5279eb3ea3d",
+            measurementId: "G-54KE76Z020"
+        };
+
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        // Update login status
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById("loginStatus").innerText = `Logged in as: ${user.uid}`;
+                loadMessages(); // Load messages when user logs in
+            } else {
+                document.getElementById("loginStatus").innerText = "Not logged in";
+            }
+        });
 
         function signup() {
             const email = document.getElementById("email").value;
@@ -54,6 +68,12 @@
                 .catch(error => alert(error.message));
         }
 
+        function logout() {
+            auth.signOut().then(() => {
+                alert("Logged out!");
+            });
+        }
+
         function sendMessage() {
             const user = auth.currentUser;
             if (!user) {
@@ -62,31 +82,53 @@
             }
             const receiverId = document.getElementById("receiverId").value;
             const message = document.getElementById("message").value;
+            if (!receiverId || !message) {
+                alert("Please enter a recipient ID and a message.");
+                return;
+            }
+
             db.collection("messages").add({
                 sender: user.uid,
                 receiver: receiverId,
                 message: message,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => alert("Message sent!"));
+            }).then(() => {
+                alert("Message sent!");
+                document.getElementById("message").value = ""; // Clear input field
+            });
         }
 
         function loadMessages() {
             auth.onAuthStateChanged(user => {
                 if (user) {
+                    document.getElementById("messages").innerHTML = "";
+
+                    // Load messages SENT by the user
+                    db.collection("messages")
+                        .where("sender", "==", user.uid)
+                        .orderBy("timestamp", "asc")
+                        .onSnapshot(snapshot => {
+                            let sentMessages = "<h3>Your Sent Messages:</h3>";
+                            snapshot.forEach(doc => {
+                                sentMessages += `<p><strong>To ${doc.data().receiver}:</strong> ${doc.data().message}</p>`;
+                            });
+                            document.getElementById("messages").innerHTML = sentMessages;
+                        });
+
+                    // Load messages RECEIVED by the user
                     db.collection("messages")
                         .where("receiver", "==", user.uid)
                         .orderBy("timestamp", "asc")
                         .onSnapshot(snapshot => {
-                            document.getElementById("messages").innerHTML = "";
+                            let receivedMessages = "<h3>Messages Sent to You:</h3>";
                             snapshot.forEach(doc => {
-                                document.getElementById("messages").innerHTML += 
-                                    `<p><strong>${doc.data().sender}:</strong> ${doc.data().message}</p>`;
+                                receivedMessages += `<p><strong>From ${doc.data().sender}:</strong> ${doc.data().message}</p>`;
                             });
+                            document.getElementById("messages").innerHTML += receivedMessages;
                         });
                 }
             });
         }
-        loadMessages();
     </script>
 </body>
 </html>
