@@ -3,194 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open Source Messenger</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-    <style>
-        /* Styles for top-right dropdown */
-        .dropdown {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-        .dropdown button {
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            background: white;
-            border: 1px solid #ccc;
-            min-width: 200px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1;
-        }
-        .dropdown-content p {
-            padding: 10px;
-            margin: 0;
-            cursor: pointer;
-        }
-        .dropdown:hover .dropdown-content {
-            display: block;
-        }
-    </style>
+    <title>Simple Messenger</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Dropdown for saved usernames -->
-    <div class="dropdown">
-        <button>Saved Users</button>
-        <div class="dropdown-content" id="userList"></div>
+    <div class="login-form">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
     </div>
 
-    <h2>Login / Sign Up</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="signup()">Sign Up</button>
-    <button onclick="login()">Login</button>
-    
-    <h3 id="loginStatus">Not logged in</h3>
-    <button onclick="logout()">Logout</button>
+    <div class="messaging" style="display:none;">
+        <h2>Welcome, <span id="user"></span></h2>
+        <input type="text" id="recipient" placeholder="Recipient Username">
+        <textarea id="message" placeholder="Type your message..."></textarea>
+        <button onclick="sendMessage()">Send Message</button>
+        
+        <h3>Your Conversations:</h3>
+        <div id="messages"></div>
+        <button onclick="logout()">Logout</button>
+    </div>
 
-    <h2>Send a Message</h2>
-    <input type="text" id="receiverId" placeholder="Recipient ID">
-    <input type="text" id="message" placeholder="Message">
-    <button onclick="sendMessage()">Send</button>
-
-    <h2>Messages</h2>
-    <div id="messages"></div>
-
-    <script>
-        // Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyBFFPU6z2plQsF5aP8ZtN3hz6ZRPeRU0eY",
-            authDomain: "open-source-messenger-auth.firebaseapp.com",
-            projectId: "open-source-messenger-auth",
-            storageBucket: "open-source-messenger-auth.appspot.com",
-            messagingSenderId: "184384557448",
-            appId: "1:184384557448:web:4b4356a273d5279eb3ea3d",
-            measurementId: "G-54KE76Z020"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // Update login status
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById("loginStatus").innerText = `Logged in as: ${user.uid}`;
-                loadMessages();
-            } else {
-                document.getElementById("loginStatus").innerText = "Not logged in";
-            }
-        });
-
-        function signup() {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            auth.createUserWithEmailAndPassword(email, password)
-                .then(userCredential => {
-                    const user = userCredential.user;
-                    db.collection("users").doc(user.uid).set({
-                        email: email,
-                        password: password // WARNING: Storing passwords like this is NOT secure. Use Firebase Auth instead.
-                    });
-                    alert("Signed up! Your ID: " + user.uid);
-                    loadUserList();
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function login() {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            auth.signInWithEmailAndPassword(email, password)
-                .then(user => alert("Logged in!"))
-                .catch(error => alert(error.message));
-        }
-
-        function logout() {
-            auth.signOut().then(() => {
-                alert("Logged out!");
-            });
-        }
-
-        function sendMessage() {
-            const user = auth.currentUser;
-            if (!user) {
-                alert("Please log in first!");
-                return;
-            }
-            const receiverId = document.getElementById("receiverId").value;
-            const message = document.getElementById("message").value;
-            if (!receiverId || !message) {
-                alert("Please enter a recipient ID and a message.");
-                return;
-            }
-
-            db.collection("messages").add({
-                sender: user.uid,
-                receiver: receiverId,
-                message: message,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                alert("Message sent!");
-                document.getElementById("message").value = "";
-            });
-        }
-
-        function loadMessages() {
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    document.getElementById("messages").innerHTML = "";
-
-                    // Load messages SENT by the user
-                    db.collection("messages")
-                        .where("sender", "==", user.uid)
-                        .orderBy("timestamp", "asc")
-                        .onSnapshot(snapshot => {
-                            let sentMessages = "<h3>Your Sent Messages:</h3>";
-                            snapshot.forEach(doc => {
-                                sentMessages += `<p><strong>To ${doc.data().receiver}:</strong> ${doc.data().message}</p>`;
-                            });
-                            document.getElementById("messages").innerHTML = sentMessages;
-                        });
-
-                    // Load messages RECEIVED by the user
-                    db.collection("messages")
-                        .where("receiver", "==", user.uid)
-                        .orderBy("timestamp", "asc")
-                        .onSnapshot(snapshot => {
-                            let receivedMessages = "<h3>Messages Sent to You:</h3>";
-                            snapshot.forEach(doc => {
-                                receivedMessages += `<p><strong>From ${doc.data().sender}:</strong> ${doc.data().message}</p>`;
-                            });
-                            document.getElementById("messages").innerHTML += receivedMessages;
-                        });
-                }
-            });
-        }
-
-        function loadUserList() {
-            const userListDiv = document.getElementById("userList");
-            userListDiv.innerHTML = ""; // Clear existing list
-
-            db.collection("users").get().then(snapshot => {
-                snapshot.forEach(doc => {
-                    const userData = doc.data();
-                    userListDiv.innerHTML += `<p>${userData.email} - ${userData.password}</p>`;
-                });
-            });
-        }
-
-        // Load user list on page load
-        window.onload = loadUserList;
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
