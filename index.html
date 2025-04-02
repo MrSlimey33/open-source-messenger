@@ -7,24 +7,22 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="login-form">
+    <div id="login">
         <h2>Login</h2>
         <input type="text" id="username" placeholder="Username">
         <input type="password" id="password" placeholder="Password">
         <button onclick="login()">Login</button>
     </div>
-
-    <div class="messaging" style="display:none;">
-        <h2>Welcome, <span id="user"></span></h2>
-        <input type="text" id="recipient" placeholder="Recipient Username">
-        <textarea id="message" placeholder="Type your message..."></textarea>
-        <button onclick="sendMessage()">Send Message</button>
-        
-        <h3>Your Conversations:</h3>
+    <div id="messenger" style="display:none;">
+        <h2>Messenger</h2>
+        <div id="conversations"></div>
+        <div>
+            <input type="text" id="recipient" placeholder="Recipient">
+            <textarea id="message" placeholder="Enter your message"></textarea>
+            <button onclick="sendMessage()">Send</button>
+        </div>
         <div id="messages"></div>
-        <button onclick="logout()">Logout</button>
     </div>
-
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
